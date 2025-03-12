@@ -16,7 +16,7 @@ def download_video():
     ydl_opts = {
         "format": "best",
         "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
-        "cookiefile": "youtube_cookies.txt",  # Updated to use new cookie file
+        "cookiefile": "youtube_cookies.txt",
     }
 
     try:
@@ -28,4 +28,5 @@ def download_video():
         return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    port = int(os.environ.get("PORT", 10000))  # Use Render's port if available
+    app.run(host="0.0.0.0", port=port, debug=True)

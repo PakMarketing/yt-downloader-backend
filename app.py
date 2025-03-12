@@ -1,8 +1,18 @@
+from flask import Flask, request, jsonify
+import yt_dlp
+import os
+
+app = Flask(__name__)
+
+# 🏠 Home Route
+@app.route("/")
+def home():
+    return "Flask server is running!"
+
+# 🎥 YouTube Video Download Route
 @app.route("/download", methods=["GET"])
 def download_video():
     url = request.args.get("url")
-    print("Received request for URL:", url)  # Debugging log
-
     if not url:
         return jsonify({"error": "No URL provided"}), 400
 
@@ -10,7 +20,7 @@ def download_video():
     os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
     ydl_opts = {
-        "format": "best",
+        "format": "bestvideo+bestaudio/best",
         "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
     }
 
@@ -18,13 +28,11 @@ def download_video():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info_dict)
-            print("Downloaded file:", filename)  # Debugging log
-
-        if not os.path.exists(filename):
-            return jsonify({"error": "File not found"}), 500
-
-        return send_file(filename, as_attachment=True)
-
+            return jsonify({"status": "success", "filename": filename})
     except Exception as e:
-        print("Error:", str(e))  # Debugging log
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)})
+
+# 🚀 Run Flask App
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))  # Default port
+    app.run(host="0.0.0.0", port=port, debug=True)

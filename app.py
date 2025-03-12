@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import yt_dlp
 import os
 
 app = Flask(__name__)
 
-# Test Route to Check if Flask is Running
+# Test Route
 @app.route("/")
 def home():
     return "Flask server is running!"
@@ -28,9 +28,15 @@ def download_video():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info_dict)
-            return jsonify({"status": "success", "filename": filename})
+
+        # Check if file exists
+        if not os.path.exists(filename):
+            return jsonify({"error": "File not found"}), 500
+
+        return send_file(filename, as_attachment=True)
+
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
 
 # Flask Run Configuration
 if __name__ == "__main__":

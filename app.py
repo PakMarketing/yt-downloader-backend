@@ -1,45 +1,47 @@
 from flask import Flask, request, jsonify, send_file
-import yt_dlp
 import os
+import subprocess
 
 app = Flask(__name__)
 
-# Downloaded files ka folder
+# Ensure Correct Cookies Path
+COOKIES_FILE = r"C:\Users\PAK MARKETING\Desktop\Python\youtube_cookies.txt"
 DOWNLOAD_FOLDER = "downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-def download_video(url):
-    """YouTube video ko download karne ka function"""
-    try:
-        ydl_opts = {
-            'cookiefile': 'youtube_cookies.txt',  # ✅ Cookies file ka path
-            'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',  # ✅ File save karne ka format
-            'format': 'bestvideo+bestaudio/best',
-            'merge_output_format': 'mp4',  # ✅ MP4 format me merge
-        }
+@app.route('/')
+def home():
+    return "YouTube Downloader API is Running!"
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            return filename  # ✅ Return file ka path
+@app.route('/download', methods=['GET'])
+def download_video():
+    video_url = request.args.get('url')
+    
+    if not video_url:
+        return jsonify({"error": "No URL provided!"}), 400
+
+    try:
+        command = [
+            "yt-dlp", 
+            "--cookies", COOKIES_FILE,
+            "-f", "best",
+            "-o", os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
+            video_url
+        ]
+        
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            return jsonify({"error": result.stderr}), 500
+        
+        # Find downloaded file
+        for file in os.listdir(DOWNLOAD_FOLDER):
+            if file.endswith(('.mp4', '.webm', '.mkv')):
+                return send_file(os.path.join(DOWNLOAD_FOLDER, file), as_attachment=True)
+        
+        return jsonify({"error": "Download failed!"}), 500
 
     except Exception as e:
-        return str(e)
+        return jsonify({"error": str(e)}), 500
 
-@app.route("/download", methods=["GET"])
-def download():
-    """API route jo YouTube video ko download karega"""
-    url = request.args.get("url")
-    
-    if not url:
-        return jsonify({"error": "URL parameter missing"}), 400
-    
-    filepath = download_video(url)
-    
-    if not os.path.exists(filepath):
-        return jsonify({"error": "Download failed"}), 500
-    
-    return send_file(filepath, as_attachment=True)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000, debug=True)
